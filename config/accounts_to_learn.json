@@ -1,0 +1,40 @@
+{
+  "target_accounts": [
+    {
+      "username": "KharayKrayKray",
+      "reason": "Uses code and code terms to dissect info, analytical style",
+      "weight": 0.8,
+      "priority": 1,
+      "learn_patterns": [
+        "code_terminology",
+        "analytical_breakdown",
+        "technical_humor",
+        "direct_communication"
+      ]
+    }
+  ],
+  "hashtags_to_monitor": [
+    "#TechTwitter",
+    "#BuildInPublic",
+    "#DevLife",
+    "#CryptoTwitter",
+    "#NigerianTech",
+    "#Coding"
+  ],
+  "topics_of_interest": [
+    "tech",
+    "programming",
+    "software_development",
+    "crypto",
+    "startup",
+    "hot_takes",
+    "industry_drama"
+  ],
+  "blacklist_accounts": [],
+  "blacklist_keywords": [
+    "giveaway",
+    "follow4follow",
+    "dm me",
+    "link in bio"
+  ]
+}

@@ -1,0 +1,899 @@
+# X Reply Guy Bot - Intelligent Growth System
+
+## 🎯 Project Overview
+
+An AI-powered X (Twitter) bot that learns authentic Nigerian communication styles, engages organically, and grows your account without triggering spam filters. The bot uses OpenRouter for advanced reasoning and operates within X's free tier API limits.
+
+### Core Philosophy
+- **Learn First, Act Later**: 2-week silent learning period analyzing posts
+- **Nigerian Authenticity**: Understands shitposts, ragebait, local humor, and valuable content
+- **Continuous Learning**: Adapts throughout its lifetime using engagement metrics
+- **Predictive Intelligence**: Knows what to jump on based on traction predictions
+- **Human-Like Behavior**: Mimics real user patterns to avoid detection
+
+---
+
+## 📁 Folder Structure
+
+```
+x-reply-bot/
+├── config/
+│   ├── bot_config.json          # Bot personality & behavior settings
+│   ├── x_credentials.json       # X API credentials (gitignored)
+│   ├── openrouter_config.json   # OpenRouter API settings (gitignored)
+│   └── accounts_to_learn.json   # Target accounts to mimic
+│
+├── data/
+│   ├── posts.json               # Training data: collected posts
+│   ├── learning_history.json    # Learning metrics & improvements
+│   ├── engagement_metrics.json  # Track what works (likes, RTs, replies)
+│   └── action_log.json          # Daily action counter (rate limiting)
+│
+├── src/
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── x_client.py          # X API wrapper
+│   │   ├── openrouter_client.py # OpenRouter reasoning engine
+│   │   └── rate_limiter.py      # Track 17/day, 500/month limits
+│   │
+│   ├── learning/
+│   │   ├── __init__.py
+│   │   ├── post_collector.py    # Scrape & analyze posts (read-only phase)
+│   │   ├── style_analyzer.py    # Learn communication patterns
+│   │   ├── traction_predictor.py # Predict viral potential
+│   │   └── personality_engine.py # Build bot personality from config
+│   │
+│   ├── reasoning/
+│   │   ├── __init__.py
+│   │   ├── decision_maker.py    # AI decides next action
+│   │   ├── content_generator.py # Generate posts/replies/quotes
+│   │   └── safety_checker.py    # Avoid spam patterns
+│   │
+│   ├── actions/
+│   │   ├── __init__.py
+│   │   ├── poster.py            # Create new posts
+│   │   ├── replier.py           # Reply to tweets
+│   │   └── quoter.py            # Quote tweets
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       ├── logger.py            # Logging system
+│       └── scheduler.py         # 24-hour action distribution
+│
+├── main.py                      # Bot entry point
+├── learn_mode.py                # 2-week learning script
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Environment variables template
+├── .gitignore
+└── README.md                    # This file
+```
+
+---
+
+## 🚀 Installation & Setup
+
+### Prerequisites
+- Python 3.9+
+- X Developer Account (Free Tier)
+- OpenRouter API Key
+- Git
+
+### Step 1: Clone & Install
+
+```bash
+git clone <your-repo-url>
+cd x-reply-bot
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Step 2: Configure X API
+
+1. Go to [X Developer Portal](https://developer.x.com)
+2. Create a new app (Free tier)
+3. Generate API keys (API Key, API Secret, Bearer Token)
+4. Copy `config/x_credentials.json.example` to `config/x_credentials.json`:
+
+```json
+{
+  "api_key": "your_api_key_here",
+  "api_secret": "your_api_secret_here",
+  "bearer_token": "your_bearer_token_here",
+  "access_token": "your_access_token_here",
+  "access_token_secret": "your_access_token_secret_here"
+}
+```
+
+### Step 3: Configure OpenRouter
+
+1. Get API key from [OpenRouter](https://openrouter.ai)
+2. Copy `config/openrouter_config.json.example` to `config/openrouter_config.json`:
+
+```json
+{
+  "api_key": "your_openrouter_key_here",
+  "model": "anthropic/claude-3.5-sonnet",
+  "temperature": 0.8,
+  "max_tokens": 2000
+}
+```
+
+### Step 4: Set Bot Personality
+
+Edit `config/bot_config.json`:
+
+```json
+{
+  "personality": {
+    "name": "YourBotName",
+    "style": "nigerian_tech_bro",
+    "tone": ["humorous", "relatable", "occasionally_serious"],
+    "topics": ["tech", "crypto", "nigerian_culture", "startup_life"],
+    "shitpost_ratio": 0.3,
+    "ragebait_ratio": 0.1,
+    "valuable_info_ratio": 0.6
+  },
+  "behavior": {
+    "learning_period_days": 14,
+    "daily_actions": 17,
+    "action_distribution": {
+      "posts": 2,
+      "quotes": 1,
+      "replies": 14
+    },
+    "active_hours": [6, 23],
+    "avoid_hours": [0, 5]
+  },
+  "engagement_thresholds": {
+    "min_likes_to_reply": 10,
+    "min_retweets_to_quote": 5,
+    "viral_threshold": 1000
+  }
+}
+```
+
+### Step 5: Add Learning Targets
+
+Edit `config/accounts_to_learn.json`:
+
+```json
+{
+  "target_accounts": [
+    {
+      "username": "elonmusk",
+      "reason": "meme lord shitposting style",
+      "weight": 0.3
+    },
+    {
+      "username": "BashirAhmaad",
+      "reason": "nigerian tech voice",
+      "weight": 0.5
+    },
+    {
+      "username": "grok",
+      "reason": "witty AI responses",
+      "weight": 0.2
+    }
+  ],
+  "hashtags_to_monitor": [
+    "#NigerianTech",
+    "#CryptoNaija",
+    "#TechTwitter",
+    "#BuildInPublic"
+  ]
+}
+```
+
+---
+
+## 🧠 How It Works
+
+### Phase 1: Learning Mode (Days 1-14)
+
+**No write actions performed. Bot observes silently.**
+
+```bash
+python learn_mode.py
+```
+
+**What happens:**
+1. **Post Collection**: Scrapes 500+ posts from target accounts
+2. **Style Analysis**: AI analyzes:
+   - Sentence structure (short vs long)
+   - Emoji usage patterns
+   - Nigerian pidgin integration
+   - Humor types (sarcasm, wordplay, memes)
+   - Topic transitions
+3. **Engagement Patterns**: Studies:
+   - What gets likes/RTs
+   - Best posting times
+   - Hashtag effectiveness
+   - Thread vs single tweet performance
+4. **Personality Synthesis**: Builds unique voice by blending target accounts weighted by config
+
+**Learning Output** (`data/learning_history.json`):
+```json
+{
+  "learning_session": "2024-01-01",
+  "posts_analyzed": 1247,
+  "style_patterns": {
+    "avg_sentence_length": 12,
+    "emoji_frequency": 0.4,
+    "pidgin_usage": 0.2,
+    "humor_type_distribution": {
+      "sarcasm": 0.35,
+      "wordplay": 0.25,
+      "meme_reference": 0.4
+    }
+  },
+  "engagement_insights": {
+    "best_time_to_post": "09:00-11:00 WAT",
+    "viral_topics": ["crypto_regulation", "japa_stories", "tech_bro_life"],
+    "avg_engagement_rate": 0.05
+  }
+}
+```
+
+### Phase 2: Active Mode (Day 15+)
+
+```bash
+python main.py
+```
+
+**Continuous Operation Loop** (runs every hour):
+
+```
+┌─────────────────────────────────────────────┐
+│ 1. Check Rate Limits                        │
+│    - Actions used today: X/17               │
+│    - Actions used this month: Y/500         │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 2. Scan Timeline & Mentions                 │
+│    - Collect new posts from timeline        │
+│    - Check mentions & replies to bot        │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 3. AI Reasoning (OpenRouter)                │
+│    Prompt: "Based on these posts,           │
+│    personality config, and engagement data, │
+│    decide the next best action."            │
+│                                             │
+│    AI considers:                            │
+│    - Viral potential score (0-100)          │
+│    - Relevance to bot personality           │
+│    - Time since last action                 │
+│    - Engagement history with user           │
+│    - Spam risk score                        │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 4. Decision Output                          │
+│    AI returns JSON:                         │
+│    {                                        │
+│      "action": "reply",                     │
+│      "target_tweet_id": "123...",           │
+│      "content": "Abeg this one na...",      │
+│      "reasoning": "High engagement,         │
+│                    fits personality",       │
+│      "confidence": 0.87                     │
+│    }                                        │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 5. Safety Check                             │
+│    - No spam words?                         │
+│    - Not too similar to recent posts?       │
+│    - Appropriate for audience?              │
+│    - Won't trigger X filters?               │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 6. Execute Action via X API                 │
+│    POST /2/tweets                           │
+│    - Log to action_log.json                 │
+│    - Update rate limiter                    │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 7. Learn from Result (24h later)            │
+│    - Check engagement (likes, RTs, replies) │
+│    - Update engagement_metrics.json         │
+│    - Adjust personality weights             │
+│    - Improve traction predictor             │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 🔥 Key Features Explained
+
+### 1. God-Tier AI Reasoning (OpenRouter)
+
+**Reasoning Prompt Structure:**
+
+```python
+prompt = f"""
+You are {bot_personality['name']}, a {bot_personality['style']} on X.
+
+LEARNED PATTERNS:
+- Sentence structure: {learned_patterns['avg_sentence_length']} words
+- Emoji usage: {learned_patterns['emoji_frequency']}
+- Nigerian pidgin: {learned_patterns['pidgin_usage']}
+- Humor style: {learned_patterns['humor_type']}
+
+RECENT TIMELINE:
+{recent_posts_json}
+
+ENGAGEMENT HISTORY:
+- Last 10 actions: {last_actions_with_results}
+- Best performing content: {top_performing_content}
+
+CURRENT CONTEXT:
+- Time: {current_time} WAT
+- Actions used today: {actions_today}/17
+- Trending topics: {trending_topics}
+
+TASK: Decide the next action. Options:
+1. Post original content (2/day budget)
+2. Quote a post (1/day budget)
+3. Reply to a post (14/day budget)
+4. Skip (wait for better opportunity)
+
+RULES:
+- Match learned communication style
+- Predict engagement (will this get >10 likes?)
+- Avoid spam patterns
+- Be authentic, not robotic
+- Nigerian audience will read this
+
+Return JSON:
+{{
+  "action": "post|quote|reply|skip",
+  "target_id": "tweet_id_if_reply/quote",
+  "content": "generated_text",
+  "reasoning": "why_this_action",
+  "engagement_prediction": 0-100,
+  "confidence": 0.0-1.0
+}}
+"""
+```
+
+### 2. Traction Prediction Algorithm
+
+**Metrics Analyzed:**
+- Author's follower count
+- Historical engagement rate
+- Time posted (vs optimal times)
+- Topic relevance to trending hashtags
+- Sentiment analysis (positive/negative/neutral)
+- Media presence (images/videos increase engagement)
+
+**Scoring Formula:**
+```python
+traction_score = (
+    (author_followers / 1000) * 0.2 +
+    author_engagement_rate * 0.3 +
+    topic_relevance * 0.25 +
+    time_optimality * 0.15 +
+    media_bonus * 0.1
+) * 100
+```
+
+**Decision Logic:**
+- Score 0-30: Skip
+- Score 30-60: Consider if slow day
+- Score 60-80: Good opportunity
+- Score 80-100: High priority action
+
+### 3. Human-Like Behavior Patterns
+
+**Randomization to Avoid Detection:**
+- Action intervals: Not exactly 1 hour apart (randomized 45-90 mins)
+- Response time: Delayed by 2-15 minutes (humans don't reply instantly)
+- Activity gaps: Simulates sleep (inactive 12am-6am WAT)
+- Weekend behavior: Reduced activity Sundays
+- Typo injection: Occasional intentional typos (2% of posts)
+
+**Example Schedule (17 actions/day):**
+```
+07:30 - Post 1 (morning greeting style)
+09:15 - Reply to trending tech tweet
+10:45 - Reply to follower
+12:30 - Quote retweet (lunch break style)
+14:20 - Reply to viral post
+15:50 - Reply to mention
+17:10 - Post 2 (evening thought)
+18:40 - Reply to engagement
+19:55 - Reply to popular thread
+21:15 - Reply to discussion
+22:30 - Reply to late night post
+... (6 more replies distributed)
+```
+
+### 4. Continuous Learning Loop
+
+**Daily Improvement Cycle:**
+
+```python
+# After every action, 24 hours later:
+def evaluate_action_performance(action_id):
+    original_action = get_action_from_log(action_id)
+    current_engagement = fetch_tweet_stats(original_action['tweet_id'])
+    
+    metrics = {
+        'likes': current_engagement['likes'],
+        'retweets': current_engagement['retweets'],
+        'replies': current_engagement['replies'],
+        'impressions': current_engagement['impressions']
+    }
+    
+    # Calculate success score
+    success_score = (
+        metrics['likes'] * 1 +
+        metrics['retweets'] * 2 +
+        metrics['replies'] * 3
+    )
+    
+    # Update learning model
+    if success_score > predicted_score:
+        # Reinforce this style/topic/timing
+        update_personality_weights(original_action, increase=True)
+    else:
+        # Reduce weight of this pattern
+        update_personality_weights(original_action, increase=False)
+    
+    # Store insight
+    save_to_engagement_metrics(action_id, metrics, success_score)
+```
+
+### 5. Grok-Style Humor Analysis
+
+**What Grok Finds Amusing** (per X's own AI):
+- Self-deprecating humor
+- Absurdist observations
+- Meta-commentary on X culture
+- Unexpected plot twists in threads
+- Clever wordplay
+- Relatable frustrations
+
+**Bot Implementation:**
+```python
+def generate_grok_style_content(topic):
+    prompt = f"""
+    Generate a post about {topic} that would make Grok laugh.
+    
+    Grok's humor preferences:
+    - Witty observations about human behavior
+    - Playful sarcasm without meanness
+    - Unexpected perspectives
+    - Self-aware jokes about being AI
+    
+    Make it feel like a human had a funny thought, not a bot.
+    Nigerian context preferred.
+    """
+    return openrouter_client.generate(prompt)
+```
+
+---
+
+## 📊 Monitoring & Analytics
+
+### Daily Dashboard (Terminal Output)
+
+```
+╔════════════════════════════════════════════════════════════╗
+║           X REPLY BOT - DAILY REPORT                       ║
+╚════════════════════════════════════════════════════════════╝
+
+📅 Date: 2024-01-15 (Day 16 - Active Mode)
+
+📈 ACTIONS TODAY:
+   Posts:   2/2  ✓
+   Quotes:  1/1  ✓
+   Replies: 14/14 ✓
+   Total:   17/17 (LIMIT REACHED)
+
+📊 MONTHLY PROGRESS:
+   Actions Used:  147/500
+   Days Remaining: 16
+   Projected Total: 462 (SAFE MARGIN)
+
+🎯 ENGAGEMENT (Last 24h):
+   Total Likes:    87
+   Total RTs:      23
+   Total Replies:  41
+   Avg per Action: 5.1 likes, 1.4 RTs
+
+🔥 TOP PERFORMING ACTION:
+   Type: Reply
+   Content: "Abeg this japa thing don tire me..."
+   Stats: 34 likes, 8 RTs, 12 replies
+   
+📚 LEARNING INSIGHTS:
+   - Nigerian pidgin posts: +40% engagement
+   - Best time: 9-11am WAT (confirmed)
+   - Topics trending: crypto regulation, tech layoffs
+
+⚠️  WARNINGS: None
+
+Next action scheduled: Tomorrow 07:30 WAT
+```
+
+### Logs Location
+
+- **Action Log**: `data/action_log.json` - Every API call logged
+- **Learning Log**: `data/learning_history.json` - Style evolution
+- **Engagement Log**: `data/engagement_metrics.json` - Performance data
+- **Error Log**: `logs/errors.log` - API errors, rate limits
+
+---
+
+## ⚙️ Configuration Deep Dive
+
+### Bot Personality Tuning
+
+**Shitpost Ratio** (`0.0 - 1.0`):
+- `0.0`: No humor, pure value
+- `0.3`: Recommended (30% funny, 70% serious)
+- `0.5`: Equal mix
+- `1.0`: Full meme mode (risky for growth)
+
+**Ragebait Ratio** (`0.0 - 0.2` max):
+- `0.0`: No controversial takes
+- `0.1`: Occasional hot takes (recommended)
+- `0.2`: Edgy content (higher risk)
+
+**Example Personality Configs:**
+
+```json
+// Professional Tech Bro
+{
+  "style": "nigerian_tech_bro",
+  "shitpost_ratio": 0.2,
+  "ragebait_ratio": 0.05,
+  "valuable_info_ratio": 0.75
+}
+
+// Meme Lord
+{
+  "style": "chaos_agent",
+  "shitpost_ratio": 0.6,
+  "ragebait_ratio": 0.15,
+  "valuable_info_ratio": 0.25
+}
+
+// Thought Leader
+{
+  "style": "insightful_commentator",
+  "shitpost_ratio": 0.1,
+  "ragebait_ratio": 0.0,
+  "valuable_info_ratio": 0.9
+}
+```
+
+---
+
+## 🛡️ Safety & Compliance
+
+### Anti-Spam Measures
+
+1. **Content Diversity Check**: No two posts within 24h can be >70% similar
+2. **Engagement Pacing**: Max 3 replies to same user per day
+3. **Hashtag Limits**: Max 2 hashtags per post
+4. **Link Caution**: Max 1 link per 5 posts
+5. **Mention Limits**: Max 1 @mention per post
+
+### X Policy Compliance
+
+- ✅ Never reply without context (no keyword spamming)
+- ✅ No automated liking (endpoint disabled in free tier anyway)
+- ✅ Respect opt-outs (if user says "stop", blacklist them)
+- ✅ Rate limit respect (17/day hard coded)
+- ✅ No misleading identity (bio clearly states it's a bot)
+
+### Error Handling
+
+```python
+# All API calls wrapped in retry logic
+@retry(tries=3, delay=60, backoff=2)
+def post_tweet(content):
+    try:
+        response = x_client.post_tweet(content)
+        log_action('post', response.id, content)
+        return response
+    except RateLimitError:
+        logger.warning("Rate limit hit, pausing...")
+        pause_until_reset()
+    except APIError as e:
+        logger.error(f"API error: {e}")
+        alert_admin(e)
+        raise
+```
+
+---
+
+## 🚀 Running the Bot
+
+### Development Mode
+
+```bash
+# Dry run (no actual posts)
+python main.py --dry-run
+
+# Verbose logging
+python main.py --verbose
+
+# Test single action
+python main.py --test-action reply --tweet-id 1234567890
+```
+
+### Production Mode
+
+```bash
+# Run continuously (recommended: use screen/tmux)
+screen -S x-bot
+python main.py
+
+# Detach: Ctrl+A, D
+# Reattach: screen -r x-bot
+```
+
+### Automated Deployment (systemd)
+
+Create `/etc/systemd/system/x-reply-bot.service`:
+
+```ini
+[Unit]
+Description=X Reply Guy Bot
+After=network.target
+
+[Service]
+Type=simple
+User=your_user
+WorkingDirectory=/path/to/x-reply-bot
+ExecStart=/path/to/venv/bin/python main.py
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable:
+```bash
+sudo systemctl enable x-reply-bot
+sudo systemctl start x-reply-bot
+sudo systemctl status x-reply-bot
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**1. Rate Limit Hit Before 17 Actions**
+- **Cause**: Counting error or API endpoint confusion
+- **Fix**: Check `data/action_log.json` for duplicate entries
+- **Code**: `src/core/rate_limiter.py` line 45
+
+**2. Bot Sounds Robotic**
+- **Cause**: Insufficient learning data
+- **Fix**: Run `learn_mode.py` for additional week
+- **Increase**: `posts_to_collect` in config from 500 to 2000
+
+**3. Low Engagement**
+- **Cause**: Posting at wrong times or topics
+- **Fix**: Review `data/engagement_metrics.json` best times
+- **Adjust**: `active_hours` in config
+
+**4. OpenRouter Timeout**
+- **Cause**: Model taking too long (>30s)
+- **Fix**: Switch to faster model in config
+- **Alternative**: `openai/gpt-4o-mini` (faster, cheaper)
+
+**5. X API 401 Unauthorized**
+- **Cause**: Expired tokens
+- **Fix**: Regenerate tokens in X Developer Portal
+- **Update**: `config/x_credentials.json`
+
+---
+
+## 📈 Growth Expectations
+
+### Realistic Timeline
+
+**Month 1** (Learning + Ramp Up):
+- Followers: +50-150
+- Engagement Rate: 2-4%
+- Bot finds its voice
+
+**Month 3** (Established Pattern):
+- Followers: +300-600 total
+- Engagement Rate: 4-8%
+- Recognized in niche communities
+
+**Month 6** (Momentum):
+- Followers: +1000-2000 total
+- Engagement Rate: 6-12%
+- Regular viral tweets (500+ likes)
+
+**Month 12** (Mature Account):
+- Followers: +3000-8000 total
+- Engagement Rate: 8-15%
+- Potential for paid tier upgrade
+
+*Note: Results vary based on niche, content quality, and consistency.*
+
+---
+
+## 🧪 Advanced Customization
+
+### Adding New Learning Sources
+
+```python
+# src/learning/post_collector.py
+def add_custom_source(source_type, identifier):
+    """
+    source_type: 'user' | 'hashtag' | 'list' | 'search'
+    identifier: username, #hashtag, list_id, or search term
+    """
+    if source_type == 'user':
+        posts = x_client.get_user_timeline(identifier, count=200)
+    elif source_type == 'hashtag':
+        posts = x_client.search_tweets(f"#{identifier}", count=200)
+    
+    analyze_and_store(posts)
+```
+
+### Custom Reasoning Prompts
+
+```python
+# src/reasoning/decision_maker.py
+CUSTOM_PROMPTS = {
+    'crypto_focus': """
+        Prioritize cryptocurrency and blockchain topics.
+        Use terms: "GM", "WAGMI", "anon", "ser".
+        Avoid: "NFA" disclaimers (be confident).
+    """,
+    
+    'tech_career': """
+        Focus on tech career advice, interview tips, salary negotiation.
+        Tone: Helpful senior engineer.
+        Avoid: Gatekeeping, elitism.
+    """
+}
+```
+
+### Webhook Integrations
+
+```python
+# Send notifications to Discord/Telegram
+def notify_viral_post(tweet_id, stats):
+    if stats['likes'] > 100:
+        discord_webhook.send(
+            f"🔥 Viral Alert! Tweet {tweet_id} has {stats['likes']} likes!"
+        )
+```
+
+---
+
+## 📦 Dependencies Explained
+
+```txt
+# Core
+tweepy==4.14.0           # X API official library
+openai==1.12.0           # OpenRouter client (compatible)
+python-dotenv==1.0.0     # Environment variable management
+
+# Data Processing
+pandas==2.1.4            # CSV handling for learning data
+numpy==1.26.3            # Numerical operations for metrics
+
+# Scheduling
+schedule==1.2.0          # Simple job scheduling
+python-dateutil==2.8.2   # Timezone handling (WAT)
+
+# NLP & Learning
+textblob==0.17.1         # Sentiment analysis
+scikit-learn==1.4.0      # Engagement prediction models
+
+# Utilities
+requests==2.31.0         # HTTP client
+pyyaml==6.0.1            # Config file parsing
+colorama==0.4.6          # Terminal colors
+tqdm==4.66.1             # Progress bars
+```
+
+---
+
+## 🤝 Contributing
+
+### Code Style
+
+- **Python**: PEP 8, type hints required
+- **Max line length**: 88 characters (Black formatter)
+- **Docstrings**: Google style
+
+### Testing
+
+```bash
+# Run tests
+pytest tests/
+
+# Coverage
+pytest --cov=src tests/
+
+# Lint
+flake8 src/
+mypy src/
+```
+
+### Adding Features
+
+1. Fork repo
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Add tests in `tests/`
+4. Update this README
+5. Submit PR with detailed description
+
+---
+
+## 📄 License
+
+MIT License - See LICENSE file
+
+**Commercial Use Allowed** | **Attribution Required**
+
+---
+
+## ⚠️ Disclaimer
+
+This bot is designed for educational purposes and legitimate account growth. Users are responsible for:
+
+1. **Compliance**: Following X Terms of Service and API policies
+2. **Content**: All bot-generated content (author is liable)
+3. **Ethics**: No spam, harassment, or manipulation
+4. **Legal**: Applicable laws in your jurisdiction
+
+The authors assume no liability for misuse, account suspension, or other consequences.
+
+---
+
+## 🙏 Credits
+
+- **X API**: Twitter/X Developer Platform
+- **OpenRouter**: Advanced AI reasoning
+- **Nigerian Tech Twitter**: Inspiration & style guidance
+- **Claude AI**: Documentation & code assistance
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **Email**: your-email@example.com
+- **X**: @YourBotAccount
+
+---
+
+## 🔮 Future Roadmap
+
+- [ ] Multi-account support (manage 5+ bots)
+- [ ] Web dashboard for monitoring
+- [ ] A/B testing for content strategies
+- [ ] Automated thread creation
+- [ ] Voice note replies (X Spaces integration)
+- [ ] NFT/crypto price alerts integration
+- [ ] Collaborative learning (bots teach each other)
+
+---
+
+**Last Updated**: December 2024 | **Version**: 1.0.0
+
+Built with ❤️ for the Nigerian tech community 🇳🇬

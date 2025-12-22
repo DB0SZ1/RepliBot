@@ -1,0 +1,28 @@
+# X Reply Bot - Dependencies
+
+# Core API
+tweepy==4.14.0              # X API official library
+httpx==0.27.0               # Async HTTP client for OpenRouter
+python-dotenv==1.0.1        # Environment variable management
+
+# Data Processing
+pandas==2.1.4               # Data handling for learning
+numpy==1.26.3               # Numerical operations
+
+# Scheduling & Time
+schedule==1.2.1             # Job scheduling
+python-dateutil==2.8.2      # Timezone handling (WAT)
+
+# NLP & Analysis
+textblob==0.18.0            # Sentiment analysis
+scikit-learn==1.4.0         # Engagement prediction
+
+# Utilities
+requests==2.31.0            # HTTP client
+pyyaml==6.0.1               # Config parsing
+colorama==0.4.6             # Terminal colors
+tqdm==4.66.1                # Progress bars
+rich==13.7.0                # Beautiful terminal output
+
+# Retry logic
+tenacity==8.2.3             # Retry with backoff
