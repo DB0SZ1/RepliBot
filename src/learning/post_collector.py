@@ -81,13 +81,21 @@ class PostCollector:
             "metadata": {
                 "last_collection": None,
                 "total_posts": 0,
-                "started": datetime.now().isoformat()
+                "started": datetime.now().isoformat(),
+                "account_index": 0,
+                "hashtag_index": 0
             }
         }
     
     def _save_posts(self) -> None:
         """Save collected posts to disk."""
         self.posts["metadata"]["last_collection"] = datetime.now().isoformat()
+        # Ensure indices exist
+        if "account_index" not in self.posts["metadata"]:
+            self.posts["metadata"]["account_index"] = 0
+        if "hashtag_index" not in self.posts["metadata"]:
+            self.posts["metadata"]["hashtag_index"] = 0
+            
         self.posts["metadata"]["total_posts"] = sum(
             len(posts) for posts in self.posts["accounts"].values()
         ) + len(self.posts["timeline"])
@@ -234,9 +242,10 @@ class PostCollector:
             print(f"[!] Error collecting timeline: {e}")
             return []
     
-    def collect_all_targets(self) -> Dict:
+    def collect_next_batch(self) -> Dict:
         """
-        Collect from all configured target accounts and hashtags.
+        Collect from NEXT target account and hashtags (Rotation).
+        Respects strict FREE TIER limits (1 call / 15 min).
         
         Returns:
             Summary of collection results
@@ -248,31 +257,50 @@ class PostCollector:
             "total_new": 0
         }
         
-        # Collect from target accounts
-        for target in self.targets_config.get("target_accounts", []):
+        # 1. Accounts Rotation
+        target_accounts = self.targets_config.get("target_accounts", [])
+        if target_accounts:
+            current_idx = self.posts["metadata"].get("account_index", 0)
+            if current_idx >= len(target_accounts):
+                current_idx = 0
+            
+            target = target_accounts[current_idx]
             username = target.get("username", "").lstrip("@")
+            
             if username:
                 posts = self.collect_from_account(username)
                 results["accounts"][username] = len(posts)
                 results["total_new"] += len(posts)
-                
-                # Random delay between accounts
-                time.sleep(random.randint(2, 5))
+            
+            # Increment for next time
+            self.posts["metadata"]["account_index"] = (current_idx + 1) % len(target_accounts)
+            time.sleep(2) # Short pause
         
-        # Collect from hashtags
-        for hashtag in self.targets_config.get("hashtags_to_monitor", []):
-            hashtag = hashtag.lstrip("#")
-            posts = self.collect_from_hashtag(hashtag)
-            results["hashtags"][hashtag] = len(posts)
+        # 2. Hashtags Rotation
+        target_hashtags = self.targets_config.get("hashtags_to_monitor", [])
+        if target_hashtags:
+            current_idx = self.posts["metadata"].get("hashtag_index", 0)
+            if current_idx >= len(target_hashtags):
+                current_idx = 0
+            
+            hashtag = target_hashtags[current_idx]
+            clean_tag = hashtag.lstrip("#")
+            
+            posts = self.collect_from_hashtag(clean_tag)
+            results["hashtags"][clean_tag] = len(posts)
             results["total_new"] += len(posts)
             
-            time.sleep(random.randint(2, 5))
+            # Increment
+            self.posts["metadata"]["hashtag_index"] = (current_idx + 1) % len(target_hashtags)
         
-        # Collect timeline
+        # 3. Timeline (Always collect if possible, or rotate this too if strict limits needed)
+        # Note: Timeline is its own endpoint limit, so we can try it every time 
+        # as long as we respect its specific 15 min limit.
         timeline_posts = self.collect_timeline()
         results["timeline"] = len(timeline_posts)
         results["total_new"] += len(timeline_posts)
         
+        self._save_posts()
         return results
     
     def _collection_loop(self) -> None:
@@ -285,7 +313,7 @@ class PostCollector:
             print(f"{'='*50}")
             
             try:
-                results = self.collect_all_targets()
+                results = self.collect_next_batch()
                 print(f"\n[COLLECTOR] Cycle complete:")
                 print(f"  - Total new posts: {results['total_new']}")
                 print(f"  - Total stored: {self.posts['metadata']['total_posts']}")

@@ -17,6 +17,8 @@ import tweepy
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 from datetime import datetime
+import urllib3
+from http.client import RemoteDisconnected
 
 # Load credentials
 CONFIG_PATH = Path(__file__).parent.parent.parent / "config"
@@ -107,6 +109,27 @@ class XClient:
             self.limiter.record_read("get_me")
         return self._me
     
+    # ==================== HELPERS ====================
+
+    def _safe_request(self, func, *args, **kwargs):
+        """
+        Execute an API call with retries for connection errors.
+        """
+        max_retries = 1
+        for attempt in range(max_retries + 1):
+            try:
+                return func(*args, **kwargs)
+            except (urllib3.exceptions.ProtocolError, RemoteDisconnected, ConnectionResetError) as e:
+                if attempt < max_retries:
+                    print(f"[X CLIENT] Connection error ({type(e).__name__}), retrying... {e}")
+                    import time
+                    time.sleep(2)
+                else:
+                    print(f"[X CLIENT] Connection failed after retries: {e}")
+                    raise e
+            except Exception as e:
+                raise e
+
     # ==================== WRITE ACTIONS ====================
     
     def post_tweet(self, text: str, dry_run: bool = False) -> Optional[Dict]:
@@ -211,7 +234,7 @@ class XClient:
                 return None
         
         try:
-            response = self.client.get_user(username=username)
+            response = self._safe_request(self.client.get_user, username=username)
             self.limiter.record_read("get_user_by_username")
             return str(response.data.id) if response.data else None
         except tweepy.TooManyRequests:
@@ -259,7 +282,8 @@ class XClient:
         exclude = [] if include_replies else ["replies"]
         
         try:
-            response = self.client.get_users_tweets(
+            response = self._safe_request(
+                self.client.get_users_tweets,
                 id=user_id,
                 max_results=min(max_results, 10),  # Free tier max is 10
                 exclude=exclude,
@@ -313,7 +337,8 @@ class XClient:
                 return []
         
         try:
-            response = self.client.get_home_timeline(
+            response = self._safe_request(
+                self.client.get_home_timeline,
                 max_results=min(max_results, 10),  # Free tier - small batches
                 tweet_fields=["created_at", "public_metrics", "author_id", "conversation_id"],
                 expansions=["author_id"],
@@ -385,7 +410,8 @@ class XClient:
                 return []
         
         try:
-            response = self.client.search_recent_tweets(
+            response = self._safe_request(
+                self.client.search_recent_tweets,
                 query=query,
                 max_results=min(max_results, 10),  # Free tier
                 sort_order=sort_order,
@@ -444,7 +470,8 @@ class XClient:
                 return None
         
         try:
-            response = self.client.get_tweet(
+            response = self._safe_request(
+                self.client.get_tweet,
                 id=tweet_id,
                 tweet_fields=["created_at", "public_metrics", "conversation_id", "author_id"],
                 expansions=["author_id"],
@@ -496,7 +523,8 @@ class XClient:
             if not user_id:
                 return []
             
-            response = self.client.get_users_mentions(
+            response = self._safe_request(
+                self.client.get_users_mentions,
                 id=user_id,
                 max_results=min(max_results, 10),  # Free tier
                 tweet_fields=["created_at", "public_metrics", "author_id", "conversation_id"],
